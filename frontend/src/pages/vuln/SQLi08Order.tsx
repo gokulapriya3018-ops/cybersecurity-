@@ -84,7 +84,7 @@ export default function SQLi08Order() {
                   onChange={e => {
                     const val = e.target.value;
                     if (/[^a-zA-Z0-9-]/.test(val)) {
-                      alert('🛑 Client-Side Security: Order ID can only contain alphanumeric characters and dashes.');
+                      alert('Client-Side Security: Order ID can only contain alphanumeric characters and dashes.');
                       return;
                     }
                     setOrderId(val);

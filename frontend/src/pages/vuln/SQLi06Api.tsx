@@ -89,7 +89,7 @@ export default function SQLi06Api() {
                       onChange={e => {
                         const val = e.target.value;
                         if (/['"=#;]/.test(val)) {
-                          alert('🛑 Client-Side Security: Invalid characters detected. Please use alphanumeric characters only.');
+                          alert('Client-Side Security: Invalid characters detected. Please use alphanumeric characters only.');
                           return;
                         }
                         setSearch(val);

@@ -7,13 +7,32 @@ datasource db {
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
-  email     String     @unique
-  password  String
-  role       Role       @default(STUDENT)
-  isApproved Boolean    @default(false)
-  progress   Progress[]
-  createdAt  DateTime   @default(now())
+  id             Int             @id @default(autoincrement())
+  email          String          @unique
+  password       String
+  role           Role            @default(STUDENT)
+  isApproved     Boolean         @default(false)
+  xp             Int             @default(0)
+  lastLoginAt    DateTime?
+  lastActiveAt   DateTime?
+  activeMinutes  Int             @default(0)
+  anomalyFlags   Int             @default(0)
+  progress       Progress[]
+  sessions       Session[]
+  badges         UserBadge[]
+  loginAudits    LoginAudit[]
+  securityEvents SecurityEvent[]
+  refreshToken   String?
+  createdAt      DateTime        @default(now())
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 enum Role {
@@ -40,4 +59,58 @@ model Progress {
   completedAt DateTime?
 
   @@unique([userId, labId])
+}
+
+model Badge {
+  id            Int         @id @default(autoincrement())
+  slug          String      @unique
+  name          String
+  description   String
+  category      String      // 'GENERAL', 'SQLI', 'XSS', 'MILESTONE'
+  tier          String      // 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'
+  criteriaType  String      // 'FIRST_LAB', 'SQLI_COUNT', 'XSS_COUNT', 'TOTAL_COUNT', 'SPECIFIC_LABS'
+  criteriaValue String      // e.g. "1", "3", "5", "10", "20", or comma-separated lab slugs
+  xpReward      Int         @default(100)
+  iconGraphic   String      // e.g. 'first-blood', 'sqli-master', etc.
+  users         UserBadge[]
+  createdAt     DateTime    @default(now())
+}
+
+model UserBadge {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  badgeId   Int
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model LoginAudit {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String   @default("127.0.0.1")
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model SecurityEvent {
+  id          Int      @id @default(autoincrement())
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  eventType   String   // 'LOGIN_SUCCESS', 'LAB_BREACH', 'BADGE_CLAIMED', 'ANOMALY_WARNING', 'ADMIN_ACTION'
+  description String
+  metadata    String?  // JSON string e.g. { labSlug, ip, duration }
+  createdAt   DateTime @default(now())
+}
+
+model BroadcastAlert {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  type      String   @default("INFO") // 'INFO', 'WARNING', 'CRITICAL'
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
 }

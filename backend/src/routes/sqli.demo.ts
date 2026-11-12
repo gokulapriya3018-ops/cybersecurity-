@@ -151,7 +151,8 @@ router.get('/lab5/filter', async (req, res) => {
 
   try {
     const result = await pool.query(query);
-    const injected = result.rows.length === 4 && price !== '1000';
+    const hasUsers = (result.rows || []).some((r: any) => r.category === 'Administrator' || r.name === 'admin');
+    const injected = (result.rows.length >= 4 && price !== '1000') || hasUsers;
     return res.json({ ok: true, products: result.rows, query, injected });
   } catch (err: any) {
     return res.status(200).json({ ok: false, error: err.message, query });

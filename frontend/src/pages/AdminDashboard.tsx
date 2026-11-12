@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, UserPlus, UserX, UserCheck, ShieldAlert, X } from 'lucide-react';
+import { ShieldCheck, UserPlus, ShieldAlert, X, Calendar, CheckCircle } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 type UserData = {
@@ -12,11 +12,25 @@ type UserData = {
   _count: { progress: number };
 };
 
+type ProgressData = {
+  id: number;
+  completed: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  lab: {
+    title: string;
+    slug: string;
+  };
+};
+
 export default function AdminDashboard() {
   const { user, token, isLoading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [selectedUserProgress, setSelectedUserProgress] = useState<ProgressData[]>([]);
   
   // New User Form State
   const [newEmail, setNewEmail] = useState('');
@@ -62,8 +76,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRevoke = async (id: number) => {
+    if (!confirm('Are you sure you want to revoke access for this user? This will log them out immediately.')) return;
+    try {
+      await fetch(`http://localhost:3000/api/admin/users/${id}/revoke`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleReject = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!confirm('Are you sure you want to delete this user? All progress will be lost permanently.')) return;
     try {
       await fetch(`http://localhost:3000/api/admin/users/${id}/reject`, {
         method: 'POST',
@@ -98,6 +125,24 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       setFormError('Connection error');
+    }
+  };
+
+  const handleViewProgress = async (targetUser: UserData) => {
+    setSelectedUser(targetUser);
+    setSelectedUserProgress([]);
+    setShowProgressModal(true);
+
+    try {
+      const res = await fetch(`http://localhost:3000/api/admin/users/${targetUser.id}/progress`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSelectedUserProgress(data.progress);
+      }
+    } catch (err) {
+      console.error('Failed to load user progress details', err);
     }
   };
 
@@ -148,8 +193,6 @@ export default function AdminDashboard() {
                 <tr className="bg-white/5 border-b border-white/10">
                   <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">User</th>
                   <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Role</th>
-                  <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Progress</th>
                   <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
@@ -165,36 +208,37 @@ export default function AdminDashboard() {
                         {u.role}
                       </span>
                     </td>
-                    <td className="p-4">
-                      {u.isApproved ? (
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded w-fit border border-emerald-500/20">
-                          <UserCheck className="w-3.5 h-3.5" /> Approved
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded w-fit border border-amber-500/20">
-                          <UserX className="w-3.5 h-3.5" /> Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="text-sky-400 font-mono text-sm">{u._count.progress} Labs Solved</div>
-                    </td>
                     <td className="p-4 text-right">
-                      {!u.isApproved && (
-                        <button 
-                          onClick={() => handleApprove(u.id)}
-                          className="text-emerald-400 hover:text-emerald-300 font-bold text-sm bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded mr-2 transition-colors"
-                        >
-                          Approve
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => handleViewProgress(u)}
+                        className="text-indigo-400 hover:text-indigo-300 font-bold text-sm bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded mr-2 transition-colors"
+                      >
+                        Progress
+                      </button>
                       {u.id !== user?.id && (
-                        <button 
-                          onClick={() => handleReject(u.id)}
-                          className="text-rose-400 hover:text-rose-300 font-bold text-sm bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded transition-colors"
-                        >
-                          Delete
-                        </button>
+                        <>
+                          {u.isApproved ? (
+                            <button 
+                              onClick={() => handleRevoke(u.id)}
+                              className="text-amber-400 hover:text-amber-300 font-bold text-sm bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded mr-2 transition-colors"
+                            >
+                              Revoke
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleApprove(u.id)}
+                              className="text-emerald-400 hover:text-emerald-300 font-bold text-sm bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded mr-2 transition-colors"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleReject(u.id)}
+                            className="text-rose-400 hover:text-rose-300 font-bold text-sm bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -262,6 +306,59 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Progress Detail Modal */}
+      {showProgressModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#12121A] w-full max-w-lg rounded-2xl border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
+              <div>
+                <h3 className="text-xl font-bold text-white">Student Lab Progress</h3>
+                <p className="text-slate-400 text-xs mt-1">Detailed walkthrough logs for: <strong>{selectedUser?.email}</strong></p>
+              </div>
+              <button onClick={() => setShowProgressModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[350px] overflow-y-auto space-y-4">
+              {selectedUserProgress.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">No labs completed yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedUserProgress.map(p => (
+                    <div key={p.id} className="flex items-center justify-between bg-white/5 border border-white/5 p-4 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-emerald-400" />
+                        <div>
+                          <p className="text-sm font-bold text-white leading-normal">{p.lab?.title || p.lab?.slug}</p>
+                          <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                            <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                            Completed on: {p.completedAt ? new Date(p.completedAt).toLocaleString() : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] uppercase font-bold text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                        Solved
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-white/10 bg-white/5 flex">
+              <button 
+                onClick={() => setShowProgressModal(false)} 
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-colors text-sm shadow-md"
+              >
+                Close Logs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

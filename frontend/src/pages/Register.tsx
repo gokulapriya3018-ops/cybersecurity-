@@ -23,7 +23,7 @@ export default function Register() {
       const data = await res.json();
       
       if (data.ok) {
-        login(data.token, data.user);
+        login(data.token, data.user, data.refreshToken);
         navigate('/');
       } else {
         setError(data.message);
@@ -41,7 +41,7 @@ export default function Register() {
       <div className="w-full max-w-md bg-white/5 border border-white/10 p-10 rounded-3xl shadow-2xl backdrop-blur-xl relative z-10">
         <div className="flex items-center gap-2 text-indigo-500 mb-8 justify-center">
           <ShieldAlert className="w-8 h-8" />
-          <span className="text-2xl font-black text-white tracking-tight">CyberSec Academy</span>
+          <span className="text-2xl font-black text-white tracking-tight">CyberForge</span>
         </div>
         
         <h1 className="text-2xl font-bold text-white mb-2 text-center">Create an Account</h1>

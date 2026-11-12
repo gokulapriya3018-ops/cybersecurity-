@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +9,9 @@ export default function Login() {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isSessionExpired = new URLSearchParams(location.search).get('expired') === 'true';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +26,7 @@ export default function Login() {
       const data = await res.json();
       
       if (data.ok) {
-        login(data.token, data.user);
+        login(data.token, data.user, data.refreshToken);
         navigate('/');
       } else {
         setError(data.message);
@@ -41,12 +44,19 @@ export default function Login() {
       <div className="w-full max-w-md bg-white/5 border border-white/10 p-10 rounded-3xl shadow-2xl backdrop-blur-xl relative z-10">
         <div className="flex items-center gap-2 text-indigo-500 mb-8 justify-center">
           <ShieldAlert className="w-8 h-8" />
-          <span className="text-2xl font-black text-white tracking-tight">CyberSec Academy</span>
+          <span className="text-2xl font-black text-white tracking-tight">CyberForge</span>
         </div>
         
         <h1 className="text-2xl font-bold text-white mb-2 text-center">Welcome Back</h1>
         <p className="text-slate-400 text-center mb-8 text-sm">Sign in to continue your training</p>
         
+        {isSessionExpired && !error && (
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3 rounded-xl text-sm mb-6 text-center font-medium flex items-center justify-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>Your session expired. Please sign in again.</span>
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm mb-6 text-center font-medium">
             {error}

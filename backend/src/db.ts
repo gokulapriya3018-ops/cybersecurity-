@@ -8,4 +8,4 @@ dotenv.config();
 const connectionString = `${process.env.DATABASE_URL}`;
 export const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
-export const prisma = new PrismaClient({ adapter });
+export const prisma: any = new PrismaClient({ adapter });

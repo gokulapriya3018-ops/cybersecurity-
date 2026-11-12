@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, ShieldAlert, ShoppingCart } from 'lucide-react';
+import { Search, ShieldAlert, ShoppingCart, Package } from 'lucide-react';
 
 export default function SQLi02Search() {
   const [search, setSearch] = useState('');
@@ -21,6 +21,13 @@ export default function SQLi02Search() {
       
       if (data.ok) {
         setProducts(data.products || []);
+        const hasExfiltrated = (data.products || []).some(
+          (p: any) => p.name === 'admin' || p.description === 'wtp2024!' || p.category === 'Administrator'
+        );
+        if (hasExfiltrated) {
+          setSuccess(true);
+          window.dispatchEvent(new CustomEvent('lab-solved'));
+        }
       } else {
         setError(data.error || 'Database error occurred.');
         setProducts([]);
@@ -51,9 +58,19 @@ export default function SQLi02Search() {
           <div className="mb-8 p-6 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-4">
             <ShieldAlert className="w-8 h-8 text-emerald-500 shrink-0" />
             <div>
-              <h3 className="text-lg font-bold text-emerald-800 mb-1">Injection Successful</h3>
-              <p className="text-emerald-700 mb-2">You successfully caused a database error, revealing underlying information or bypassing constraints.</p>
-              <p className="text-xs font-mono text-emerald-600">Flag: CSA{'{'}ERR0R_B4S3D_M4ST3R{'}'}</p>
+              <h3 className="text-lg font-bold text-emerald-800 mb-1">
+                {products.some(p => p.category === 'Administrator' || p.name === 'admin') 
+                  ? 'UNION Exfiltration Successful!' 
+                  : 'Injection Successful'}
+              </h3>
+              <p className="text-emerald-700 mb-2">
+                {products.some(p => p.category === 'Administrator' || p.name === 'admin')
+                  ? 'You successfully merged the hidden `vuln_users` table via UNION SELECT. Leaked credentials are shown below in red!'
+                  : 'You successfully caused a database error, revealing underlying information or bypassing constraints.'}
+              </p>
+              <p className="text-xs font-mono text-emerald-600 font-bold">
+                Flag: CSA{'{'}{products.some(p => p.category === 'Administrator' || p.name === 'admin') ? 'UNION_EXFILTRATION_M4ST3R' : 'ERR0R_B4S3D_M4ST3R'}{'}'}
+              </p>
             </div>
           </div>
         )}
@@ -89,17 +106,49 @@ export default function SQLi02Search() {
         )}
 
         {products.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {products.map((product, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all cursor-pointer">
-                <div className="h-40 bg-slate-100 rounded-xl mb-4 flex items-center justify-center">
-                   <div className="text-slate-300 text-4xl">📦</div>
-                </div>
-                <h3 className="font-bold text-slate-800 text-xl mb-1">{product.name}</h3>
-                <p className="text-slate-500 text-sm mb-4 line-clamp-2">{product.description}</p>
-                <div className="font-black text-indigo-600 text-xl">${product.price}</div>
+          <div>
+            {products.some(p => p.category === 'Administrator' || p.name === 'admin' || p.category === 'Operator') && (
+              <div className="mb-4 flex items-center gap-2 text-rose-600 font-bold bg-rose-50 border border-rose-200 px-4 py-2 rounded-xl text-sm">
+                <span>🔓 Database Exfiltration Active:</span>
+                <span className="font-mono text-rose-800">Directly displaying rows extracted from `vuln_users` table!</span>
               </div>
-            ))}
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {products.map((product, i) => {
+                const isLeaked = product.category === 'Administrator' || product.category === 'Operator' || product.category === 'Viewer' || product.name === 'admin';
+                return (
+                  <div 
+                    key={i} 
+                    className={`rounded-2xl p-6 border transition-all cursor-pointer relative ${
+                      isLeaked 
+                        ? 'bg-rose-50/70 border-rose-300 ring-2 ring-rose-400 shadow-md' 
+                        : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-lg'
+                    }`}
+                  >
+                    {isLeaked && (
+                      <span className="absolute top-3 right-3 bg-rose-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider shadow">
+                        Leaked Credential
+                      </span>
+                    )}
+                    <div className={`h-36 rounded-xl mb-4 flex items-center justify-center ${isLeaked ? 'bg-rose-100' : 'bg-slate-100'}`}>
+                      <Package className={`w-12 h-12 ${isLeaked ? 'text-rose-400' : 'text-slate-300'}`} />
+                    </div>
+                    <div className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      {isLeaked ? `ROLE: ${product.category}` : 'PRODUCT'}
+                    </div>
+                    <h3 className="font-bold text-slate-800 text-xl mb-1">
+                      {isLeaked ? `User: ${product.name}` : product.name}
+                    </h3>
+                    <p className={`text-sm mb-4 font-mono ${isLeaked ? 'text-rose-700 font-bold bg-rose-100/70 p-2 rounded-lg' : 'text-slate-500 line-clamp-2'}`}>
+                      {isLeaked ? `Password: ${product.description}` : product.description}
+                    </p>
+                    <div className={`font-black text-xl ${isLeaked ? 'text-rose-600' : 'text-indigo-600'}`}>
+                      {isLeaked ? 'EXFILTRATED' : `$${product.price}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
