@@ -238,7 +238,7 @@ router.post('/update-price', async (req, res) => {
 
   try {
     await pool.query('UPDATE chained_products SET price = $1 WHERE id = $2', [numPrice, id]);
-    const updated = await pool.query('SELECT * FROM chained_products WHERE id = $2', [id]);
+    const updated = await pool.query('SELECT * FROM chained_products WHERE id = $1', [id]);
     
     const isHacked = numPrice <= 10.00;
 
